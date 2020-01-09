@@ -17,12 +17,11 @@ def read_color(canvas: tk.Canvas, break_event: Event):
 
     # Create UDP-socket
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.bind(('127.0.0.1', 5005))
+    sock.bind(('192.168.0.101', 5005))
 
     while not break_event.is_set():
-        data, connection = sock.recvfrom(1024)
-        time.sleep(0.01)
-        canvas.config(bg=data)
+        color, connection = sock.recvfrom(1024)
+        canvas.config(bg=color)
 
 
 logger = getLogger('MAIN')
@@ -32,7 +31,7 @@ root = tk.Tk()
 root.wm_attributes('-topmost', 1)
 # root.wm_attributes('-disabled', True)
 # root.resizable(0, 0)
-root.geometry('120x80')
+root.geometry('260x160')
 root.geometry('+0+0')
 root.title('Rainbow')
 # root.protocol('WM_DELETE_WINDOW', lambda: 0)
