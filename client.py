@@ -1,57 +1,42 @@
-import os
 import time
 import socket
-import tkinter as tk
-
-from threading import Thread, Event
-from logging import getLogger, DEBUG, basicConfig, ERROR
 
 
-def read_color(canvas: tk.Canvas, break_event: Event):
-    """Read the color from socket
+class Socket:
 
-        :param canvas:
-        :param break_event:
-        :return:
-        """
+    def __init__(self, host: str, port: int,
+                 idle_time: float = 1.0, buffsize: int = 1024):
+        self._last_message = 0
+        self._connection = None
+        self._idle_time = idle_time
+        self._buffsize = buffsize
 
-    # Create UDP-socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    sock.bind(('192.168.0.101', 5005))
+        # Create UDP-socket
+        self._sock = socket.socket(
+            family=socket.AF_INET,
+            type=socket.SOCK_DGRAM,
+            proto=socket.IPPROTO_UDP)
+        self._sock.bind((host, port))
 
-    while not break_event.is_set():
-        color, connection = sock.recvfrom(1024)
-        canvas.config(bg=color)
+    @property
+    def idle_time(self):
+        return self._idle_time
 
+    @property
+    def buffsize(self):
+        return self._buffsize
 
-logger = getLogger('MAIN')
-basicConfig(level=DEBUG if os.environ.get('DEBUG', 0) else ERROR)
+    @property
+    def is_online(self):
+        return time.time() - self._last_message <= self.idle_time
 
-root = tk.Tk()
-root.wm_attributes('-topmost', 1)
-# root.wm_attributes('-disabled', True)
-# root.resizable(0, 0)
-root.geometry('260x160')
-root.geometry('+0+0')
-root.title('Rainbow')
-# root.protocol('WM_DELETE_WINDOW', lambda: 0)
+    def __next__(self):
+        data, connection = self._sock.recvfrom(self.buffsize)
 
-cv = tk.Canvas(name='img')
-cv.config(bg='#000000')
-cv.pack(side='top', fill='both', expand='yes')
+        if self.is_online and self._connection != connection:
+            return
 
-event = Event()
-thread = Thread(target=read_color, daemon=True, args=(cv, event,))
-thread.start()
+        self._connection = connection
+        self._last_message = time.time()
 
-try:
-    print('Press [Ctrl+C] to exit...')
-    root.mainloop()
-except KeyboardInterrupt:
-    pass
-finally:
-    logger.info('Closing...')
-    event.set()
-    logger.info('Event is set...')
-    thread.join()
-    logger.info('Thread {} joined'.format(thread.name))
+        yield data
